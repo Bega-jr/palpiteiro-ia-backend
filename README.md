@@ -1,1 +1,0 @@
-# palpiteiro-ia-backend
