@@ -9,14 +9,22 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-# Inicializar Firebase com variável de ambiente
-cred = credentials.Certificate(os.getenv('GOOGLE_APPLICATION_CREDENTIALS'))
-firebase_admin.initialize_app(cred)
+# Depuração: Verificar se a variável de ambiente existe
+print("GOOGLE_APPLICATION_CREDENTIALS:", os.getenv('GOOGLE_APPLICATION_CREDENTIALS'))
+
+# Inicializar Firebase
+try:
+    cred = credentials.Certificate(os.getenv('GOOGLE_APPLICATION_CREDENTIALS'))
+    firebase_admin.initialize_app(cred)
+except Exception as e:
+    print("Erro ao inicializar Firebase:", str(e))
+    raise
 
 df = pd.DataFrame()
 try:
     df = pd.read_csv('historico_lotofacil.csv')
 except FileNotFoundError:
+    print("Arquivo historico_lotofacil.csv não encontrado. Usando dados simulados.")
     sorteios_data = [
         {'concurso': 3422, 'data': '2025-06-28', 'numeros': [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 24, 25, 26]},
     ]
@@ -70,4 +78,5 @@ def taxas_acerto():
         return jsonify({'erro': 'Token inválido'}), 401
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.getenv('PORT', 10000))
+    app.run(host='0.0.0.0', port=port, debug=True)
