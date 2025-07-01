@@ -4,12 +4,13 @@ import pandas as pd
 import random
 import firebase_admin
 from firebase_admin import credentials, auth
+import os
 
 app = Flask(__name__)
 CORS(app)
 
-# Inicializar Firebase (substitua pelo seu arquivo de credenciais)
-cred = credentials.Certificate('caminho/para/seu-firebase-adminsdk.json')
+# Inicializar Firebase com variável de ambiente
+cred = credentials.Certificate(os.getenv('GOOGLE_APPLICATION_CREDENTIALS'))
 firebase_admin.initialize_app(cred)
 
 df = pd.DataFrame()
@@ -30,10 +31,9 @@ def gerar_aposta_diversa(fixos, df):
     return sorted(fixos + random.sample(frios, 11))
 
 def calcular_taxas_acerto(df):
-    # Simulação de taxas de acerto (baseada em dados reais ou backtest)
     total_sorteios = len(df)
-    acertos_11 = 0.7  # Exemplo: 70% dos palpites acertaram 11 números
-    acertos_12 = 0.4  # 40% acertaram 12 números
+    acertos_11 = 0.7  # Simulação: 70% acertam 11 números
+    acertos_12 = 0.4  # Simulação: 40% acertam 12 números
     return {
         'acertos_11': f'{acertos_11*100:.1f}%',
         'acertos_12': f'{acertos_12*100:.1f}%'
