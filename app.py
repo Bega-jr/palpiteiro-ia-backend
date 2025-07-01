@@ -1,4 +1,5 @@
 import sys
+import traceback
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import pandas as pd
@@ -11,50 +12,62 @@ app = Flask(__name__)
 CORS(app)
 
 # Depuração: Logar início do script
-print("Iniciando app.py...")
+print("Iniciando app.py...", file=sys.stderr)
 
 # Depuração: Verificar variável de ambiente
-print("GOOGLE_APPLICATION_CREDENTIALS:", os.getenv('GOOGLE_APPLICATION_CREDENTIALS'))
+print(f"GOOGLE_APPLICATION_CREDENTIALS: {os.getenv('GOOGLE_APPLICATION_CREDENTIALS')}", file=sys.stderr)
+
+# Verificar se o arquivo firebase-adminsdk.json existe
+try:
+    with open(os.getenv('GOOGLE_APPLICATION_CREDENTIALS'), 'r') as f:
+        print("Arquivo firebase-adminsdk.json encontrado.", file=sys.stderr)
+except Exception as e:
+    print(f"Erro ao acessar firebase-adminsdk.json: {str(e)}", file=sys.stderr)
+    raise
 
 # Inicializar Firebase
 try:
     cred = credentials.Certificate(os.getenv('GOOGLE_APPLICATION_CREDENTIALS'))
     firebase_admin.initialize_app(cred)
-    print("Firebase inicializado com sucesso.")
+    print("Firebase inicializado com sucesso.", file=sys.stderr)
 except Exception as e:
     print(f"Erro ao inicializar Firebase: {str(e)}", file=sys.stderr)
+    traceback.print_exc(file=sys.stderr)
     raise
 
 # Carregar CSV com separador ';'
 df = pd.DataFrame()
 try:
-    print("Tentando carregar historico_lotofacil.csv...")
+    print("Tentando carregar historico_lotofacil.csv...", file=sys.stderr)
     df = pd.read_csv('historico_lotofacil.csv', sep=';')
-    print("CSV carregado com sucesso. Colunas:", df.columns.tolist())
+    print(f"CSV carregado com sucesso. Colunas: {df.columns.tolist()}", file=sys.stderr)
 except FileNotFoundError:
     print("Arquivo historico_lotofacil.csv não encontrado. Usando dados simulados.", file=sys.stderr)
     sorteios_data = [
-        {'concurso': 3422, 'data': '2025-06-28', 'bola 1': 1, 'bola 2': 3, 'bola 3': 5, 'bola 4': 7, 'bola 5': 9,
+        {'Concurso': 3422, 'Data': '2025-06-28', 'bola 1': 1, 'bola 2': 3, 'bola 3': 5, 'bola 4': 7, 'bola 5': 9,
          'bola 6': 11, 'bola 7': 13, 'bola 8': 15, 'bola 9': 17, 'bola 10': 19, 'bola 11': 21, 'bola 12': 23,
          'bola 13': 24, 'bola 14': 25, 'bola 15': 26}
     ]
     df = pd.DataFrame(sorteios_data)
 except Exception as e:
     print(f"Erro ao carregar CSV: {str(e)}", file=sys.stderr)
+    traceback.print_exc(file=sys.stderr)
     raise
 
 # Combinar colunas bola 1 a bola 15 em uma coluna 'numeros'
 try:
-    print("Processando colunas 'bola 1' a 'bola 15'...")
+    print("Processando colunas 'bola 1' a 'bola 15'...", file=sys.stderr)
     bola_cols = [f'bola {i}' for i in range(1, 16)]
     if all(col in df.columns for col in bola_cols):
         df['numeros'] = df[bola_cols].apply(lambda row: [int(x) for x in row], axis=1)
-        df = df[['concurso', 'data', 'numeros']]  # Manter apenas colunas necessárias
+        df = df[['Concurso', 'Data', 'numeros']]  # Manter apenas colunas necessárias
+        df.columns = ['concurso', 'data', 'numeros']  # Padronizar nomes
     else:
         raise ValueError("Colunas 'bola 1' a 'bola 15' não encontradas no CSV")
-    print("Coluna 'numeros' criada com sucesso.")
+    print("Coluna 'numeros' criada com sucesso.", file=sys.stderr)
 except Exception as e:
     print(f"Erro ao processar colunas 'bola': {str(e)}", file=sys.stderr)
+    traceback.print_exc(file=sys.stderr)
     raise
 
 def escolher_fixos(df, n=4):
@@ -128,8 +141,9 @@ def taxas_acerto():
 if __name__ == '__main__':
     try:
         port = int(os.getenv('PORT', 10000))
-        print(f"Iniciando Flask na porta {port}...")
+        print(f"Iniciando Flask na porta {port}...", file=sys.stderr)
         app.run(host='0.0.0.0', port=port, debug=True)
     except Exception as e:
         print(f"Erro ao iniciar Flask: {str(e)}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         raise
