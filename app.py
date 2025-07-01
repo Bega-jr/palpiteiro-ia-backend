@@ -80,8 +80,23 @@ def escolher_fixos(df, n=4):
 
 def gerar_aposta_diversa(fixos, df):
     try:
+        # Pegar os 10 números menos frequentes
         frios = df['numeros'].explode().value_counts().tail(10).index.tolist()
-        return sorted(fixos + random.sample(frios, 11))
+        # Calcular quantos números faltam para completar 15 (considerando fixos)
+        num_frios = min(len(frios), 15 - len(fixos))
+        # Selecionar números frios
+        selecionados = random.sample(frios, num_frios)
+        # Completar com números aleatórios, se necessário
+        total_numeros = len(fixos) + len(selecionados)
+        if total_numeros < 15:
+            # Lista de todos os números possíveis (1 a 25)
+            todos_numeros = list(range(1, 26))
+            # Remover números já selecionados (fixos e frios)
+            disponiveis = [n for n in todos_numeros if n not in fixos and n not in selecionados]
+            # Selecionar números adicionais para completar 15
+            adicionais = random.sample(disponiveis, 15 - total_numeros)
+            selecionados.extend(adicionais)
+        return sorted(fixos + selecionados)
     except Exception as e:
         print(f"Erro em gerar_aposta_diversa: {str(e)}", file=sys.stderr)
         raise
@@ -106,7 +121,7 @@ def gerar_palpites():
         palpites = []
         for i in range(7):
             if i < 5:
-                aposta = fixos + random.sample([n for n in range(1, 26) if n not in fixos], 11)
+                aposta = fixos + random.sample([n for n in range(1, 26) if n not in fixos], 15 - len(fixos))
             else:
                 aposta = gerar_aposta_diversa(fixos[:2], df)
             palpites.append(sorted(aposta[:15]))
