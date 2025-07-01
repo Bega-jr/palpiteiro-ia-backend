@@ -9,6 +9,7 @@ CORS(app, resources={r"/*": {"origins": ["https://palpiteiro-ia.netlify.app", "h
 # Carregar CSV
 try:
     df = pd.read_csv('historico_lotofacil.csv', sep=';')
+    print(f"CSV carregado com {len(df)} linhas")
 except Exception as e:
     print(f"Erro ao carregar CSV: {e}")
     df = pd.DataFrame()
@@ -16,10 +17,12 @@ except Exception as e:
 @app.route('/historico', methods=['GET'])
 def historico():
     try:
+        if df.empty:
+            return jsonify({'error': 'Nenhum dado disponível no histórico'}), 500
         sorteios = [
             {
                 'concurso': int(row['Concurso']),
-                'data': row['Data'],
+                'data': str(row['Data']),
                 'numeros': [int(row[f'bola {i}']) for i in range(1, 16)]
             } for _, row in df.iterrows()
         ]
@@ -38,7 +41,6 @@ def gerar_palpites():
 @app.route('/taxas_acerto', methods=['GET'])
 def taxas_acerto():
     try:
-        # Substitua pela lógica real
         taxas = {'acertos_11': '70.0%', 'acertos_12': '30.0%'}
         return jsonify({'taxas': taxas})
     except Exception as e:
