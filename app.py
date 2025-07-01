@@ -34,20 +34,27 @@ try:
 except FileNotFoundError:
     print("Arquivo historico_lotofacil.csv não encontrado. Usando dados simulados.", file=sys.stderr)
     sorteios_data = [
-        {'concurso': 3422, 'data': '2025-06-28', 'numeros': '1;3;5;7;9;11;13;15;17;19;21;23;24;25;26'}
+        {'concurso': 3422, 'data': '2025-06-28', 'bola 1': 1, 'bola 2': 3, 'bola 3': 5, 'bola 4': 7, 'bola 5': 9,
+         'bola 6': 11, 'bola 7': 13, 'bola 8': 15, 'bola 9': 17, 'bola 10': 19, 'bola 11': 21, 'bola 12': 23,
+         'bola 13': 24, 'bola 14': 25, 'bola 15': 26}
     ]
     df = pd.DataFrame(sorteios_data)
 except Exception as e:
     print(f"Erro ao carregar CSV: {str(e)}", file=sys.stderr)
     raise
 
-# Processar a coluna 'numeros' para converter de string para lista
+# Combinar colunas bola 1 a bola 15 em uma coluna 'numeros'
 try:
-    print("Processando coluna 'numeros'...")
-    df['numeros'] = df['numeros'].apply(lambda x: [int(n) for n in x.split(';')])
-    print("Coluna 'numeros' processada com sucesso.")
+    print("Processando colunas 'bola 1' a 'bola 15'...")
+    bola_cols = [f'bola {i}' for i in range(1, 16)]
+    if all(col in df.columns for col in bola_cols):
+        df['numeros'] = df[bola_cols].apply(lambda row: [int(x) for x in row], axis=1)
+        df = df[['concurso', 'data', 'numeros']]  # Manter apenas colunas necessárias
+    else:
+        raise ValueError("Colunas 'bola 1' a 'bola 15' não encontradas no CSV")
+    print("Coluna 'numeros' criada com sucesso.")
 except Exception as e:
-    print(f"Erro ao processar coluna 'numeros': {str(e)}", file=sys.stderr)
+    print(f"Erro ao processar colunas 'bola': {str(e)}", file=sys.stderr)
     raise
 
 def escolher_fixos(df, n=4):
