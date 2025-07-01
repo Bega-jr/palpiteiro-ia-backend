@@ -30,6 +30,7 @@ def historico():
                 'numeros': [int(row[f'bola {i}']) for i in range(1, 16)]
             } for _, row in df.iterrows() if not pd.isna(row['Concurso'])
         ]
+        print(f"Retornando {len(sorteios)} sorteios para /historico")
         return jsonify({'sorteios': sorteios})
     except Exception as e:
         print(f"Erro na rota /historico: {e}")
@@ -39,6 +40,7 @@ def historico():
 def gerar_palpites():
     try:
         palpites = [random.sample(range(1, 26), 15) for _ in range(7)]
+        print(f"Gerando {len(palpites)} palpites para /gerar_palpites")
         return jsonify({'palpites': [sorted(p) for p in palpites]})
     except Exception as e:
         print(f"Erro na rota /gerar_palpites: {e}")
@@ -48,6 +50,7 @@ def gerar_palpites():
 def taxas_acerto():
     try:
         taxas = {'acertos_11': '70.0%', 'acertos_12': '30.0%'}
+        print("Retornando taxas de acerto")
         return jsonify({'taxas': taxas})
     except Exception as e:
         print(f"Erro na rota /taxas_acerto: {e}")
