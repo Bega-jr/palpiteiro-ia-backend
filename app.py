@@ -18,7 +18,7 @@ try:
     print(f"CSV carregado com {len(df)} linhas")
     required_columns = ['Concurso', 'Data'] + [f'bola {i}' for i in range(1, 16)]
     missing_columns = [col for col in required_columns if col not in df.columns]
-    if missing_columns Iberian:
+    if missing_columns:
         raise ValueError(f"Colunas ausentes no CSV: {missing_columns}")
 except Exception as e:
     print(f"Erro ao carregar CSV: {e}")
@@ -51,7 +51,7 @@ def gerar_palpites():
     try:
         palpite = random.sample(range(1, 26), 15)
         print(f"Gerando palpite: {palpite}")
-        return jsonify({'palpite': sorted(palpite)})
+        return jsonify({'palpite': palpite})
     except Exception as e:
         print(f"Erro na rota /gerar_palpites: {e}")
         return jsonify({'error': str(e)}), 500
