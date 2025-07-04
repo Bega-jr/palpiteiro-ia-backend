@@ -1,72 +1,51 @@
-from flask import Flask, jsonify, request
-from flask_cors import CORS
+import requests
 import pandas as pd
-import random
+from flask import Flask, jsonify, request
+import os
 
 app = Flask(__name__)
-CORS(app, resources={
-    r"/*": {
-        "origins": ["https://palpiteiro-ia.netlify.app", "http://localhost:8000"],
-        "methods": ["GET", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
-    }
-})
 
-# Carregar CSV
-try:
-    df = pd.read_csv('historico_lotofacil.csv', sep=';')
-    print(f"CSV carregado com {len(df)} linhas")
-    required_columns = ['Concurso', 'Data'] + [f'bola {i}' for i in range(1, 16)]
-    missing_columns = [col for col in required_columns if col not in df.columns]
-    if missing_columns:
-        raise ValueError(f"Colunas ausentes no CSV: {missing_columns}")
-except Exception as e:
-    print(f"Erro ao carregar CSV: {e}")
-    df = pd.DataFrame()
+# Carregar ou criar o CSV
+csv_path = 'historico_lotofacil.csv'
+if os.path.exists(csv_path):
+    df = pd.read_csv(csv_path, sep=';')
+else:
+    df = pd.DataFrame(columns=['Concurso', 'Data', 'bola_1', 'bola_2', 'bola_3', 'bola_4', 'bola_5', 'bola_6', 'bola_7', 'bola_8', 'bola_9', 'bola_10', 'bola_11', 'bola_12', 'bola_13', 'bola_14', 'bola_15'])
 
 @app.route('/historico', methods=['GET', 'OPTIONS'])
 def historico():
     if request.method == 'OPTIONS':
         return jsonify({}), 200
     try:
-        if df.empty:
-            return jsonify({'error': 'Nenhum dado disponível no histórico'}), 500
-        sorteios = [
-            {
-                'concurso': int(row['Concurso']),
-                'data': str(row['Data']),
-                'numeros': [int(row[f'bola {i}']) for i in range(1, 16)]
-            } for _, row in df.iterrows() if not pd.isna(row['Concurso'])
-        ]
-        print(f"Retornando {len(sorteios)} sorteios para /historico")
-        return jsonify({'sorteios': sorteios})
+        # Buscar dados da API da Caixa
+        response = requests.get('https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/latest')
+        if response.status_code != 200:
+            raise ValueError(f"Erro na API: {response.status_code}")
+        data = response.json()
+
+        # Extrair informações
+        concurso = data['numero']
+        data_sorteio = data['dataApuracao']
+        numeros = data['dezenas']
+
+        # Verificar se o concurso já existe
+        if df['Concurso'].eq(concurso).any():
+            return jsonify({'sorteios': df.to_dict('records')})
+
+        # Adicionar novo sorteio ao DataFrame
+        new_row = {'Concurso': concurso, 'Data': data_sorteio}
+        for i, num in enumerate(numeros, 1):
+            new_row[f'bola_{i}'] = num
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+
+        # Salvar no CSV
+        df.to_csv(csv_path, sep=';', index=False)
+
+        # Retornar os sorteios atualizados
+        return jsonify({'sorteios': df.to_dict('records')})
     except Exception as e:
         print(f"Erro na rota /historico: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/gerar_palpites', methods=['GET', 'OPTIONS'])
-def gerar_palpites():
-    if request.method == 'OPTIONS':
-        return jsonify({}), 200
-    try:
-        palpite = random.sample(range(1, 26), 15)
-        print(f"Gerando palpite: {palpite}")
-        return jsonify({'palpite': palpite})
-    except Exception as e:
-        print(f"Erro na rota /gerar_palpites: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/taxas_acerto', methods=['GET', 'OPTIONS'])
-def taxas_acerto():
-    if request.method == 'OPTIONS':
-        return jsonify({}), 200
-    try:
-        taxas = {'acertos_11': '70.0%', 'acertos_12': '30.0%'}
-        print("Retornando taxas de acerto")
-        return jsonify({'taxas': taxas})
-    except Exception as e:
-        print(f"Erro na rota /taxas_acerto: {e}")
-        return jsonify({'error': str(e)}), 500
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=5000)
