@@ -23,17 +23,17 @@ def historico():
             raise ValueError(f"Erro na API: {response.status_code} - {response.text}")
         data = response.json()
 
-        # Ajuste na estrutura do JSON da API
-        concurso = data.get('concurso') or data.get('numero')  # Tenta 'concurso' ou 'numero'
-        data_sorteio = data.get('data') or data.get('dataApuracao')  # Tenta 'data' ou 'dataApuracao'
-        numeros = data.get('dezenas', [])  # Garante lista vazia se não houver
+        # Tentar diferentes chaves para encontrar os dados
+        concurso = data.get('concurso') or data.get('concurso_id') or data.get('numero')
+        data_sorteio = data.get('data') or data.get('data_sorteio') or data.get('dataApuracao')
+        numeros = data.get('dezenas', [])
 
         if not concurso or not data_sorteio or not numeros:
-            raise ValueError("Estrutura da API inválida ou dados ausentes")
+            raise ValueError(f"Estrutura da API inválida ou dados ausentes. Resposta: {data}")
 
         if not df['Concurso'].eq(concurso).any():
             new_row = {'Concurso': concurso, 'Data': data_sorteio}
-            for i, num in enumerate(numeros[:15], 1):  # Limita a 15 números
+            for i, num in enumerate(numeros[:15], 1):
                 new_row[f'bola_{i}'] = num
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
             df.to_csv(csv_path, sep=';', index=False)
@@ -42,6 +42,9 @@ def historico():
         return jsonify({'sorteios': df.to_dict('records')})
     except Exception as e:
         print(f"Erro na rota /historico: {e}")
+        # Fallback para o último dado no CSV se a API falhar
+        if not df.empty:
+            return jsonify({'sorteios': df.to_dict('records')})
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
