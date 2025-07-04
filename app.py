@@ -6,9 +6,9 @@ import random
 app = Flask(__name__)
 CORS(app)  # Permitir chamadas do frontend
 
-# Carregar o histórico real dos sorteios a partir de um CSV
+# Carregar o histórico real dos sorteios a partir de um CSV com separador ';'
 try:
-    df = pd.read_csv("historico_lotofacil.csv")
+    df = pd.read_csv("historico_lotofacil.csv", sep=";")
     df["numeros"] = df["numeros"].apply(lambda x: list(map(int, x.split(","))))
 except Exception as e:
     df = pd.DataFrame(columns=["concurso", "data", "numeros"])
