@@ -23,9 +23,13 @@ def historico():
             raise ValueError(f"Erro na API: {response.status_code} - {response.text}")
         data = response.json()
 
-        concurso = data['concurso']['numero']
-        data_sorteio = data['concurso']['data']
-        numeros = data['concurso']['dezenas']
+        # Ajuste na estrutura do JSON da API
+        concurso = data.get('concurso', {}).get('numero')  # Tenta acessar 'numero' dentro de 'concurso'
+        data_sorteio = data.get('concurso', {}).get('data')
+        numeros = data.get('concurso', {}).get('dezenas', [])
+
+        if not concurso or not data_sorteio or not numeros:
+            raise ValueError("Estrutura da API inválida ou dados ausentes")
 
         if not df['Concurso'].eq(concurso).any():
             new_row = {'Concurso': concurso, 'Data': data_sorteio}
