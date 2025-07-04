@@ -3,6 +3,7 @@ import pandas as pd
 from flask import Flask, jsonify, request
 import os
 from flask_cors import CORS
+import json
 
 app = Flask(__name__)
 CORS(app)
@@ -21,12 +22,16 @@ def historico():
         response = requests.get('https://api.guidi.dev.br/loteria/lotofacil/ultimo', timeout=10)
         if response.status_code == 200:
             data = response.json()
+            print(f"Resposta da API: {json.dumps(data, indent=2)}")  # Log da resposta completa
+            # Verificar se é um erro da API
+            if data.get('status') == 'error':
+                raise ValueError(f"API retornou erro: {data.get('message')}")
             # Tentar diferentes chaves pra mapear os dados
             concurso = data.get('concurso') or data.get('concurso_id') or data.get('numero')
             data_sorteio = data.get('data') or data.get('data_sorteio') or data.get('dataApuracao')
             numeros = data.get('dezenas', [])
             if not concurso or not data_sorteio or not numeros:
-                raise ValueError(f"Estrutura da API inválida ou dados ausentes. Resposta: {data}")
+                raise ValueError(f"Estrutura da API inválida ou dados ausentes. Resposta: {json.dumps(data, indent=2)}")
             if not df['Concurso'].eq(concurso).any():
                 new_row = {'Concurso': concurso, 'Data': data_sorteio}
                 for i, num in enumerate(numeros[:15], 1):
@@ -40,6 +45,7 @@ def historico():
         print(f"Erro na rota /historico: {e}")
         # Fallback pra dados existentes no CSV
         if not df.empty:
+            print("Usando fallback do CSV")
             return jsonify({'sorteios': df.to_dict('records')})
         return jsonify({'error': str(e)}), 500
 
