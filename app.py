@@ -2,8 +2,10 @@ import requests
 import pandas as pd
 from flask import Flask, jsonify, request
 import os
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 csv_path = 'historico_lotofacil.csv'
 if os.path.exists(csv_path):
@@ -16,26 +18,23 @@ def historico():
     if request.method == 'OPTIONS':
         return jsonify({}), 200
     try:
-        # Usar API alternativa
-        response = requests.get('https://api.guidi.dev.br/loteria/lotofacil/ultimo')
+        response = requests.get('https://api.guidi.dev.br/loteria/lotofacil/ultimo', timeout=10)
         if response.status_code != 200:
-            raise ValueError(f"Erro na API: {response.status_code}")
+            raise ValueError(f"Erro na API: {response.status_code} - {response.text}")
         data = response.json()
 
-        # Extrair informações (ajustar conforme estrutura real)
-        concurso = data['concurso']
-        data_sorteio = data['data']
-        numeros = data['dezenas']
+        concurso = data['concurso']['numero']
+        data_sorteio = data['concurso']['data']
+        numeros = data['concurso']['dezenas']
 
-        if df['Concurso'].eq(concurso).any():
-            return jsonify({'sorteios': df.to_dict('records')})
+        if not df['Concurso'].eq(concurso).any():
+            new_row = {'Concurso': concurso, 'Data': data_sorteio}
+            for i, num in enumerate(numeros, 1):
+                new_row[f'bola_{i}'] = num
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            df.to_csv(csv_path, sep=';', index=False)
+            print(f"Novo concurso adicionado: {concurso}")
 
-        new_row = {'Concurso': concurso, 'Data': data_sorteio}
-        for i, num in enumerate(numeros, 1):
-            new_row[f'bola_{i}'] = num
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-
-        df.to_csv(csv_path, sep=';', index=False)
         return jsonify({'sorteios': df.to_dict('records')})
     except Exception as e:
         print(f"Erro na rota /historico: {e}")
