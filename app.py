@@ -24,16 +24,16 @@ def historico():
         data = response.json()
 
         # Ajuste na estrutura do JSON da API
-        concurso = data.get('concurso', {}).get('numero')  # Tenta acessar 'numero' dentro de 'concurso'
-        data_sorteio = data.get('concurso', {}).get('data')
-        numeros = data.get('concurso', {}).get('dezenas', [])
+        concurso = data.get('concurso') or data.get('numero')  # Tenta 'concurso' ou 'numero'
+        data_sorteio = data.get('data') or data.get('dataApuracao')  # Tenta 'data' ou 'dataApuracao'
+        numeros = data.get('dezenas', [])  # Garante lista vazia se não houver
 
         if not concurso or not data_sorteio or not numeros:
             raise ValueError("Estrutura da API inválida ou dados ausentes")
 
         if not df['Concurso'].eq(concurso).any():
             new_row = {'Concurso': concurso, 'Data': data_sorteio}
-            for i, num in enumerate(numeros, 1):
+            for i, num in enumerate(numeros[:15], 1):  # Limita a 15 números
                 new_row[f'bola_{i}'] = num
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
             df.to_csv(csv_path, sep=';', index=False)
