@@ -5,7 +5,6 @@ import os
 
 app = Flask(__name__)
 
-# Carregar ou criar o CSV
 csv_path = 'historico_lotofacil.csv'
 if os.path.exists(csv_path):
     df = pd.read_csv(csv_path, sep=';')
@@ -17,31 +16,26 @@ def historico():
     if request.method == 'OPTIONS':
         return jsonify({}), 200
     try:
-        # Buscar dados da API da Caixa
-        response = requests.get('https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/latest')
+        # Usar API alternativa
+        response = requests.get('https://api.guidi.dev.br/loteria/lotofacil/ultimo')
         if response.status_code != 200:
             raise ValueError(f"Erro na API: {response.status_code}")
         data = response.json()
 
-        # Extrair informações
-        concurso = data['numero']
-        data_sorteio = data['dataApuracao']
+        # Extrair informações (ajustar conforme estrutura real)
+        concurso = data['concurso']
+        data_sorteio = data['data']
         numeros = data['dezenas']
 
-        # Verificar se o concurso já existe
         if df['Concurso'].eq(concurso).any():
             return jsonify({'sorteios': df.to_dict('records')})
 
-        # Adicionar novo sorteio ao DataFrame
         new_row = {'Concurso': concurso, 'Data': data_sorteio}
         for i, num in enumerate(numeros, 1):
             new_row[f'bola_{i}'] = num
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
 
-        # Salvar no CSV
         df.to_csv(csv_path, sep=';', index=False)
-
-        # Retornar os sorteios atualizados
         return jsonify({'sorteios': df.to_dict('records')})
     except Exception as e:
         print(f"Erro na rota /historico: {e}")
