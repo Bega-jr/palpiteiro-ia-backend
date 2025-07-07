@@ -4,6 +4,7 @@ from flask import Flask, jsonify, request
 import os
 from flask_cors import CORS
 import json
+import random
 
 app = Flask(__name__)
 CORS(app)
@@ -25,7 +26,6 @@ def historico():
             print(f"Resposta da API: {json.dumps(data, indent=2)}")
             if data.get('status') == 'error':
                 raise ValueError(f"API retornou erro: {data.get('message')}")
-            # Mapear campos com base na estrutura real
             concurso = str(data.get('concurso') or data.get('numero'))
             data_sorteio = data.get('data') or data.get('dataApuracao')
             numeros = data.get('dezenas', [])
@@ -42,12 +42,18 @@ def historico():
             print(f"API falhou com status: {response.status_code}, texto: {response.text}")
     except Exception as e:
         print(f"Erro na rota /historico: {e}")
-        # Fallback com dados padrão se CSV vazio
-        if df.empty:
-            df = pd.DataFrame([{'Concurso': '3430', 'Data': '2025-06-30', 'bola_1': '01', 'bola_2': '02', 'bola_3': '03', 'bola_4': '04', 'bola_5': '05', 'bola_6': '06', 'bola_7': '07', 'bola_8': '08', 'bola_9': '09', 'bola_10': '10', 'bola_11': '11', 'bola_12': '12', 'bola_13': '13', 'bola_14': '14', 'bola_15': '15'}])
-        return jsonify({'sorteios': df.to_dict('records')})
-
+    if df.empty:
+        df = pd.DataFrame([{'Concurso': '3430', 'Data': '2025-06-30', 'bola_1': '01', 'bola_2': '02', 'bola_3': '03', 'bola_4': '04', 'bola_5': '05', 'bola_6': '06', 'bola_7': '07', 'bola_8': '08', 'bola_9': '09', 'bola_10': '10', 'bola_11': '11', 'bola_12': '12', 'bola_13': '13', 'bola_14': '14', 'bola_15': '15'}])
     return jsonify({'sorteios': df.to_dict('records')})
+
+@app.route('/gerar_palpites', methods=['GET'])
+def gerar_palpites():
+    try:
+        numeros = random.sample(range(1, 26), 15)  # Gera 15 números únicos de 1 a 25
+        return jsonify({'palpites': [numeros]})
+    except Exception as e:
+        print(f"Erro ao gerar palpites: {e}")
+        return jsonify({'error': 'Falha ao gerar palpites'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
