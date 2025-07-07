@@ -11,7 +11,7 @@ CORS(app)
 
 csv_path = 'historico_lotofacil.csv'
 # Carrega o CSV globalmente, fora da função
-df = pd.read_csv(csv_path, sep=';') if os.path.exists(csv_path) else pd.DataFrame(columns=['Concurso', 'Data', 'bola_1', 'bola_2', 'bola_3', 'bola_4', 'bola_5', 'bola_6', 'bola_7', 'bola_8', 'bola_9', 'bola_10', 'bola_11', 'bola_12', 'bola_13', 'bola_14', 'bola_15', 'OrdemSorteio', 'Local', 'ValorPremio15', 'Ganhadores15'])
+df = pd.read_csv(csv_path, sep=';') if os.path.exists(csv_path) else pd.DataFrame(columns=['Concurso', 'Data', 'bola_1', 'bola_2', 'bola_3', 'bola_4', 'bola_5', 'bola_6', 'bola_7', 'bola_8', 'bola_9', 'bola_10', 'bola_11', 'bola_12', 'bola_13', 'bola_14', 'bola_15', 'OrdemSorteio', 'Local', 'ValorPremio15', 'Ganhadores15', 'ValorPremio14', 'Ganhadores14', 'ValorPremio13', 'Ganhadores13', 'ValorPremio12', 'Ganhadores12', 'ValorPremio11', 'Ganhadores11'])
 
 @app.route('/historico', methods=['GET', 'OPTIONS'])
 def historico():
@@ -32,12 +32,11 @@ def historico():
             numeros = data.get('listaDezenas', [])
             ordem_sorteio = data.get('dezenasSorteadasOrdemSorteio', [])
             local_sorteio = data.get('nomeMunicipioUFSorteio')
-            premio_15 = next((item['valorPremio'] for item in data.get('listaRateioPremio', []) if item['faixa'] == 1), 0)
-            ganhadores_15 = next((item['numeroDeGanhadores'] for item in data.get('listaRateioPremio', []) if item['faixa'] == 1), 0)
             if not concurso or not data_sorteio or not numeros or len(numeros) < 15:
                 print(f"Estrutura da API inválida ou dados insuficientes: {json.dumps(data, indent=2)}")
                 raise ValueError("Dados insuficientes da API")
-            # Atualiza o DataFrame com os dados da API
+            
+            # Inicializa new_row com os campos básicos
             new_row = {
                 'Concurso': concurso,
                 'Data': data_sorteio,
@@ -46,10 +45,21 @@ def historico():
                 'bola_9': numeros[8], 'bola_10': numeros[9], 'bola_11': numeros[10], 'bola_12': numeros[11],
                 'bola_13': numeros[12], 'bola_14': numeros[13], 'bola_15': numeros[14],
                 'OrdemSorteio': ','.join(ordem_sorteio) if ordem_sorteio else None,
-                'Local': local_sorteio,
-                'ValorPremio15': premio_15,
-                'Ganhadores15': ganhadores_15
+                'Local': local_sorteio
             }
+            
+            # Adiciona as faixas de premiação (15 a 11 acertos)
+            for faixa in data.get('listaRateioPremio', []):
+                acertos = faixa['faixa']
+                if 11 <= acertos <= 15:
+                    new_row[f'ValorPremio{acertos}'] = faixa['valorPremio']
+                    new_row[f'Ganhadores{acertos}'] = faixa['numeroDeGanhadores']
+
+            # Garante valores padrão se a faixa não existir
+            for acertos in range(11, 16):
+                new_row[f'ValorPremio{acertos}'] = new_row.get(f'ValorPremio{acertos}', 0)
+                new_row[f'Ganhadores{acertos}'] = new_row.get(f'Ganhadores{acertos}', 0)
+
             if not df['Concurso'].eq(concurso).any():
                 df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                 df.to_csv(csv_path, sep=';', index=False)
@@ -65,7 +75,7 @@ def historico():
             print("Usando fallback do CSV")
             return jsonify({'sorteios': df.to_dict('records')})
         print("CSV vazio e API falhou, retornando dados padrão")
-        return jsonify({'sorteios': [{'Concurso': '3430', 'Data': '2025-06-30', 'bola_1': '01', 'bola_2': '02', 'bola_3': '03', 'bola_4': '04', 'bola_5': '05', 'bola_6': '06', 'bola_7': '07', 'bola_8': '08', 'bola_9': '09', 'bola_10': '10', 'bola_11': '11', 'bola_12': '12', 'bola_13': '13', 'bola_14': '14', 'bola_15': '15', 'OrdemSorteio': None, 'Local': None, 'ValorPremio15': 0, 'Ganhadores15': 0}]}), 500
+        return jsonify({'sorteios': [{'Concurso': '3430', 'Data': '2025-06-30', 'bola_1': '01', 'bola_2': '02', 'bola_3': '03', 'bola_4': '04', 'bola_5': '05', 'bola_6': '06', 'bola_7': '07', 'bola_8': '08', 'bola_9': '09', 'bola_10': '10', 'bola_11': '11', 'bola_12': '12', 'bola_13': '13', 'bola_14': '14', 'bola_15': '15', 'OrdemSorteio': None, 'Local': None, 'ValorPremio15': 0, 'Ganhadores15': 0, 'ValorPremio14': 0, 'Ganhadores14': 0, 'ValorPremio13': 0, 'Ganhadores13': 0, 'ValorPremio12': 0, 'Ganhadores12': 0, 'ValorPremio11': 0, 'Ganhadores11': 0}]}), 500
 
 @app.route('/gerar_palpites', methods=['GET'])
 def gerar_palpites():
