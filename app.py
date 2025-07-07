@@ -10,13 +10,12 @@ app = Flask(__name__)
 CORS(app)
 
 csv_path = 'historico_lotofacil.csv'
-if os.path.exists(csv_path):
-    df = pd.read_csv(csv_path, sep=';')
-else:
-    df = pd.DataFrame(columns=['Concurso', 'Data', 'bola_1', 'bola_2', 'bola_3', 'bola_4', 'bola_5', 'bola_6', 'bola_7', 'bola_8', 'bola_9', 'bola_10', 'bola_11', 'bola_12', 'bola_13', 'bola_14', 'bola_15', 'OrdemSorteio', 'Local', 'ValorPremio15', 'Ganhadores15'])
+# Carrega o CSV globalmente, fora da função
+df = pd.read_csv(csv_path, sep=';') if os.path.exists(csv_path) else pd.DataFrame(columns=['Concurso', 'Data', 'bola_1', 'bola_2', 'bola_3', 'bola_4', 'bola_5', 'bola_6', 'bola_7', 'bola_8', 'bola_9', 'bola_10', 'bola_11', 'bola_12', 'bola_13', 'bola_14', 'bola_15', 'OrdemSorteio', 'Local', 'ValorPremio15', 'Ganhadores15'])
 
 @app.route('/historico', methods=['GET', 'OPTIONS'])
 def historico():
+    global df  # Garante que df seja global
     if request.method == 'OPTIONS':
         return jsonify({}), 200
     try:
