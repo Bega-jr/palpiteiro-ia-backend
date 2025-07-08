@@ -23,7 +23,7 @@ def historico():
         response = requests.get('https://api.guidi.dev.br/loteria/lotofacil/ultimo', timeout=10)
         if response.status_code == 200:
             data = response.json()
-            print(f"Resposta da API: {json.dumps(data, indent=2)}")
+            print(f"Resposta da API: {json.dumps(data, indent=2)}")  # Log completo pra depuração
             if data.get('status') == 'error':
                 print(f"API retornou erro: {data.get('message')}")
                 raise ValueError("API retornou erro")
@@ -48,12 +48,17 @@ def historico():
                 'Local': local_sorteio
             }
             
-            # Adiciona as faixas de premiação (15 a 11 acertos)
-            for faixa in data.get('listaRateioPremio', []):
+            # Adiciona as faixas de premiação (15 a 11 acertos) com log de depuração
+            rateio_premio = data.get('listaRateioPremio', [])
+            print(f"Faixas de premiação encontradas: {rateio_premio}")  # Log pra verificar as faixas
+            for faixa in rateio_premio:
                 acertos = faixa['faixa']
                 if 11 <= acertos <= 15:
-                    new_row[f'ValorPremio{acertos}'] = faixa['valorPremio']
-                    new_row[f'Ganhadores{acertos}'] = faixa['numeroDeGanhadores']
+                    valor_premio = float(faixa['valorPremio']) if faixa['valorPremio'] else 0
+                    ganhadores = int(faixa['numeroDeGanhadores']) if faixa['numeroDeGanhadores'] else 0
+                    new_row[f'ValorPremio{acertos}'] = valor_premio
+                    new_row[f'Ganhadores{acertos}'] = ganhadores
+                    print(f"Adicionada faixa {acertos}: Valor={valor_premio}, Ganhadores={ganhadores}")
 
             # Garante valores padrão se a faixa não existir
             for acertos in range(11, 16):
