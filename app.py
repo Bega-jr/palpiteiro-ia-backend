@@ -48,11 +48,11 @@ def historico():
                 'Local': local_sorteio
             }
             
-            # Adiciona as faixas de premiação (15 a 11 acertos) com log de depuração
+            # Adiciona as faixas de premiação (15 a 11 acertos) corrigindo o mapeamento
             rateio_premio = data.get('listaRateioPremio', [])
             print(f"Faixas de premiação encontradas: {rateio_premio}")  # Log pra verificar as faixas
             for faixa in rateio_premio:
-                acertos = faixa['faixa']
+                acertos = 16 - faixa['faixa']  # Ajuste: faixa 1 = 15 acertos, faixa 2 = 14 acertos, etc.
                 if 11 <= acertos <= 15:
                     valor_premio = float(faixa['valorPremio']) if faixa['valorPremio'] else 0
                     ganhadores = int(faixa['numeroDeGanhadores']) if faixa['numeroDeGanhadores'] else 0
