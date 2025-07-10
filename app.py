@@ -19,7 +19,7 @@ df = pd.read_csv(csv_path, sep=';') if os.path.exists(csv_path) else pd.DataFram
     'Concurso', 'Data', 'bola_1', 'bola_2', 'bola_3', 'bola_4', 'bola_5', 'bola_6', 'bola_7', 'bola_8', 'bola_9', 'bola_10',
     'bola_11', 'bola_12', 'bola_13', 'bola_14', 'bola_15', 'OrdemSorteio', 'Local', 'ValorPremio15', 'Ganhadores15',
     'ValorPremio14', 'Ganhadores14', 'ValorPremio13', 'Ganhadores13', 'ValorPremio12', 'Ganhadores12', 'ValorPremio11',
-    'Ganhadores11'
+    'Ganhadores11', 'dataProximoConcurso', 'valorEstimadoProximoConcurso'
 ])
 
 # Números consistentes baseados no histórico
@@ -92,6 +92,8 @@ def historico():
             numeros = data.get('listaDezenas', [])
             ordem_sorteio = data.get('dezenasSorteadasOrdemSorteio', [])
             local_sorteio = data.get('nomeMunicipioUFSorteio')
+            proximo_data = data.get('dataProximoConcurso')  # Pegando da API, se disponível
+            proximo_valor = data.get('valorEstimadoProximoConcurso')  # Pegando da API, se disponível
             if not concurso or not data_sorteio or not numeros or len(numeros) < 15:
                 raise ValueError("Dados insuficientes da API")
             
@@ -119,20 +121,14 @@ def historico():
                 new_row[f'ValorPremio{acertos}'] = new_row.get(f'ValorPremio{acertos}', 0)
                 new_row[f'Ganhadores{acertos}'] = new_row.get(f'Ganhadores{acertos}', 0)
 
+            new_row['dataProximoConcurso'] = proximo_data or (datetime.strptime(data_sorteio, '%Y-%m-%d') + pd.Timedelta(days=7)).strftime('%Y-%m-%d')
+            new_row['valorEstimadoProximoConcurso'] = proximo_valor or '2.000.000,00'  # Fallback se não houver
+
             if not df['Concurso'].eq(concurso).any():
                 df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                 df.to_csv(csv_path, sep=';', index=False)
             
-            # Simular próximo sorteio (a ser ajustado com API real)
-            proximo_concurso = int(concurso) + 1
-            proximo_data = (datetime.strptime(data_sorteio, '%Y-%m-%d') + pd.Timedelta(days=7)).strftime('%Y-%m-%d')
-            proximo_row = {
-                'Concurso': str(proximo_concurso),
-                'dataProximoConcurso': proximo_data,
-                'local': local_sorteio,  # Mesma cidade como exemplo
-                'valorEstimadoProximoConcurso': '2.000.000,00'  # Estimativa fictícia
-            }
-            return jsonify({'sorteios': [new_row, proximo_row]})
+            return jsonify({'sorteios': [new_row]})
         else:
             raise ValueError("Falha na requisição à API")
     except Exception as e:
@@ -146,7 +142,7 @@ def historico():
             'OrdemSorteio': '01,02,03,04,05,06,07,08,09,10,11,12,13,14,15', 'Local': 'SÃO PAULO, SP',
             'ValorPremio15': 1806333.97, 'Ganhadores15': 1, 'ValorPremio14': 2181.72, 'Ganhadores14': 248,
             'ValorPremio13': 30.0, 'Ganhadores13': 9800, 'ValorPremio12': 12.0, 'Ganhadores12': 111936,
-            'ValorPremio11': 6.0, 'Ganhadores11': 627357
+            'ValorPremio11': 6.0, 'Ganhadores11': 627357, 'dataProximoConcurso': '2025-07-14', 'valorEstimadoProximoConcurso': '2.000.000,00'
         }]}), 500
 
 if __name__ == '__main__':
