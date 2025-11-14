@@ -1,16 +1,10 @@
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import firestore
 import os
-import json
 
-# Inicialização segura
-cred_json = os.getenv('FIREBASE_CREDENTIALS_JSON')
-if cred_json and not firebase_admin._apps:
-    cred = credentials.Certificate(json.loads(cred_json))
-    firebase_admin.initialize_app(cred)
-elif not firebase_admin._apps:
-    cred = credentials.ApplicationDefault()
-    firebase_admin.initialize_app(cred)
+# Usa Application Default Credentials (ADC) — Render + Google Cloud
+if not firebase_admin._apps:
+    firebase_admin.initialize_app()
 
 db = firestore.client()
 
@@ -22,6 +16,10 @@ def salvar_aposta(uid, numeros, concurso):
         'timestamp': firestore.SERVER_TIMESTAMP
     }, merge=True)
 
+def obter_apostas(uid):
+    apostas_ref = db.collection('usuarios').document(uid).collection('apostas')
+    docs = apostas_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).stream()
+    return [{**doc.to_dict(), 'id': doc.id} for doc in docs]
 def obter_apostas(uid):
     apostas_ref = db.collection('usuarios').document(uid).collection('apostas')
     docs = apostas_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).stream()
