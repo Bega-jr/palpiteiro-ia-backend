@@ -1,15 +1,12 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
-import os
 
-# Usa o Secret File do Render
+# Render cria o arquivo no caminho /secrets/firebase-adminsdk.json
+CRED_PATH = '/secrets/firebase-adminsdk.json'
+
 if not firebase_admin._apps:
-    cred_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '/app/firebase-adminsdk.json')
-    if os.path.exists(cred_path):
-        cred = credentials.Certificate(cred_path)
-        firebase_admin.initialize_app(cred)
-    else:
-        firebase_admin.initialize_app()  # Fallback
+    cred = credentials.Certificate(CRED_PATH)
+    firebase_admin.initialize_app(cred)
 
 db = firestore.client()
 
