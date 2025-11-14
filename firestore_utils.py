@@ -1,11 +1,15 @@
 import firebase_admin
-from firebase_admin import firestore
+from firebase_admin import credentials, firestore
 import os
 
-# FORÇA Application Default Credentials (ADC)
+# Usa o Secret File do Render
 if not firebase_admin._apps:
-    # NÃO usa JSON, NÃO usa env
-    firebase_admin.initialize_app()
+    cred_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '/app/firebase-adminsdk.json')
+    if os.path.exists(cred_path):
+        cred = credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
+    else:
+        firebase_admin.initialize_app()  # Fallback
 
 db = firestore.client()
 
