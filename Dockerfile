@@ -1,18 +1,27 @@
+# ---------- Build ----------
+FROM python:3.11-slim AS builder
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --user --no-cache-dir -r requirements.txt
+
+# ---------- Runtime ----------
 FROM python:3.11-slim
-
-RUN apt-get update && apt-get install -y \
-    gcc \
-    python3-dev \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copia apenas binários
+COPY --from=builder /root/.local /root/.local
+ENV PATH=/root/.local/bin:$PATH
 
-COPY . .
+# Código essencial
+COPY app.py auth_middleware.py estatisticas.py firestore_utils.py ./
+COPY historico_lotofacil.csv aposta_semanal.json ./
 
-ENV PYTHONUNBUFFERED=1
+# Segurança: remove arquivos sensíveis
+RUN rm -f firebase-adminsdk.json
 
-CMD gunicorn --bind 0.0.0.0:$PORT --timeout 120 --preload app:app
+ENV PYTHONUNBUFFERED=1 \
+    PORT=5000
+
+EXPOSE $PORT
+
+CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "--timeout", "120", "--preload", "app:app"]
