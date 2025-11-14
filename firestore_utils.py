@@ -1,7 +1,7 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# Render cria o arquivo no caminho /secrets/firebase-adminsdk.json
+# Render coloca em /secrets/
 CRED_PATH = '/secrets/firebase-adminsdk.json'
 
 if not firebase_admin._apps:
