@@ -1,9 +1,12 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
+import os
+import json
 
-# Inicializar o Firebase (reutiliza se já iniciado)
-if not firebase_admin._apps:
-    cred = credentials.Certificate('firebase-adminsdk.json')
+# Inicializa com credenciais seguras
+cred_json = os.getenv('FIREBASE_CREDENTIALS_JSON')
+if cred_json and not firebase_admin._apps:
+    cred = credentials.Certificate(json.loads(cred_json))
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
