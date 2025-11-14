@@ -1,11 +1,14 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
+import os
+import json
 
-# Render coloca em /secrets/
-CRED_PATH = '/secrets/firebase-adminsdk.json'
+# Usa ENV VAR como JSON string
+service_account_json = os.getenv('FIREBASE_SERVICE_ACCOUNT')
 
-if not firebase_admin._apps:
-    cred = credentials.Certificate(CRED_PATH)
+if service_account_json and not firebase_admin._apps:
+    cred_dict = json.loads(service_account_json)
+    cred = credentials.Certificate(cred_dict)
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
