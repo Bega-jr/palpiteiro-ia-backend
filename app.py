@@ -1,149 +1,156 @@
-import requests
-import pandas as pd
-from flask import Flask, jsonify, request
 import os
-from flask_cors import CORS
 import json
 import random
+import requests
+import pandas as pd
 from datetime import datetime
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+import redis
+from auth_middleware import verificar_token
+import firestore_utils as fs
 
 app = Flask(__name__)
 CORS(app)
 
-# Caminhos e dados
-csv_path = 'historico_lotofacil.csv'
-aposta_path = 'aposta_semanal.json'
+# ---------- CONFIG ----------
+CSV_PATH = 'historico_lotofacil.csv'
+APOSTA_PATH = 'aposta_semanal.json'
+REDIS = redis.from_url(os.getenv('REDIS_URL', 'redis://localhost:6379/0'), decode_responses=True)
 
-# Carregar ou inicializar DataFrame
-df = pd.read_csv(csv_path, sep=';') if os.path.exists(csv_path) else pd.DataFrame(columns=[
-    'Concurso', 'Data', 'bola_1', 'bola_2', 'bola_3', 'bola_4', 'bola_5', 'bola_6', 'bola_7', 'bola_8', 'bola_9', 'bola_10',
-    'bola_11', 'bola_12', 'bola_13', 'bola_14', 'bola_15', 'OrdemSorteio', 'Local', 'ValorPremio15', 'Ganhadores15',
-    'ValorPremio14', 'Ganhadores14', 'ValorPremio13', 'Ganhadores13', 'ValorPremio12', 'Ganhadores12', 'ValorPremio11',
-    'Ganhadores11', 'dataProximoConcurso', 'valorEstimadoProximoConcurso'
-])
+# Carregar CSV (fallback)
+df = pd.read_csv(CSV_PATH, sep=';') if os.path.exists(CSV_PATH) else pd.DataFrame()
 
-# Números consistentes baseados no histórico
+# Números fixos
 FIXED_NUMBERS = [1, 3, 4, 15, 21, 23]
 
-# Carregar aposta semanal
+# ---------- HELPERS ----------
 def load_weekly_aposta():
-    if os.path.exists(aposta_path):
-        with open(aposta_path, 'r') as f:
+    if os.path.exists(APOSTA_PATH):
+        with open(APOSTA_PATH) as f:
             return json.load(f)
     return None
 
-# Salvar aposta semanal
 def save_weekly_aposta(aposta):
-    with open(aposta_path, 'w') as f:
+    with open(APOSTA_PATH, 'w') as f:
         json.dump(aposta, f)
 
-# Gerar aposta fixa semanal
 def generate_fixed_aposta():
     remaining = [n for n in range(1, 26) if n not in FIXED_NUMBERS]
-    random_nums = random.sample(remaining, 9)
-    return sorted(FIXED_NUMBERS + random_nums)
+    return sorted(FIXED_NUMBERS + random.sample(remaining, 9))
 
-# Gerar 7 apostas premium
 def generate_premium_apostas():
-    palpites = []
-    for _ in range(7):
-        base = FIXED_NUMBERS.copy()
-        remaining = [n for n in range(1, 26) if n not in base]
-        additional = random.sample(remaining, 9)
-        palpites.append(sorted(base + additional))
-    return palpites
+    return [sorted(FIXED_NUMBERS + random.sample([n for n in range(1,26) if n not in FIXED_NUMBERS], 9)) for _ in range(7)]
 
+# ---------- ROTAS ----------
 @app.route('/gerar_palpites', methods=['GET'])
+@verificar_token
 def gerar_palpites():
     try:
         premium = request.args.get('premium') == 'true'
         fixed = request.args.get('fixed') == 'true'
+        uid = request.uid
 
         if fixed:
             today = datetime.now()
             aposta = load_weekly_aposta()
-            if not aposta or today.weekday() == 6:  # 6 = Domingo
+            if not aposta or today.weekday() == 6:  # Domingo
                 aposta = generate_fixed_aposta()
                 save_weekly_aposta(aposta)
+            fs.salvar_aposta(uid, aposta, "fixa_semanal")
             return jsonify({'palpites': [aposta]})
+
         elif premium:
             palpites = generate_premium_apostas()
             return jsonify({'palpites': palpites})
+
         else:
-            numeros = random.sample(range(1, 26), 15)
-            return jsonify({'palpites': [numeros]})
+            nums = sorted(random.sample(range(1, 26), 15))
+            fs.salvar_aposta(uid, nums, f"aleatoria_{int(datetime.now().timestamp())}")
+            return jsonify({'palpites': [nums]})
+
     except Exception as e:
-        print(f"Erro ao gerar palpites: {e}")
         return jsonify({'error': 'Falha ao gerar palpites'}), 500
 
 @app.route('/historico', methods=['GET', 'OPTIONS'])
 def historico():
-    global df
     if request.method == 'OPTIONS':
         return jsonify({}), 200
+
+    cached = REDIS.get('lotofacil_ultimo')
+    if cached:
+        return jsonify({'sorteios': [json.loads(cached)]})
+
     try:
-        response = requests.get('https://api.guidi.dev.br/loteria/lotofacil/ultimo', timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('status') == 'error':
-                raise ValueError("API retornou erro")
-            concurso = str(data.get('numero'))
-            data_sorteio = data.get('dataApuracao')
-            numeros = data.get('listaDezenas', [])
-            ordem_sorteio = data.get('dezenasSorteadasOrdemSorteio', [])
-            local_sorteio = data.get('nomeMunicipioUFSorteio')
-            proximo_data = data.get('dataProximoConcurso')  # Pegando da API, se disponível
-            proximo_valor = data.get('valorEstimadoProximoConcurso')  # Pegando da API, se disponível
-            if not concurso or not data_sorteio or not numeros or len(numeros) < 15:
-                raise ValueError("Dados insuficientes da API")
-            
-            new_row = {
-                'Concurso': concurso,
-                'Data': data_sorteio,
-                'bola_1': numeros[0], 'bola_2': numeros[1], 'bola_3': numeros[2], 'bola_4': numeros[3],
-                'bola_5': numeros[4], 'bola_6': numeros[5], 'bola_7': numeros[6], 'bola_8': numeros[7],
-                'bola_9': numeros[8], 'bola_10': numeros[9], 'bola_11': numeros[10], 'bola_12': numeros[11],
-                'bola_13': numeros[12], 'bola_14': numeros[13], 'bola_15': numeros[14],
-                'OrdemSorteio': ','.join(ordem_sorteio) if ordem_sorteio else None,
-                'Local': local_sorteio
-            }
-            
-            rateio_premio = data.get('listaRateioPremio', [])
-            for faixa in rateio_premio:
-                acertos = 16 - faixa['faixa']
-                if 11 <= acertos <= 15:
-                    valor_premio = float(faixa['valorPremio']) if faixa['valorPremio'] else 0
-                    ganhadores = int(faixa['numeroDeGanhadores']) if faixa['numeroDeGanhadores'] else 0
-                    new_row[f'ValorPremio{acertos}'] = valor_premio
-                    new_row[f'Ganhadores{acertos}'] = ganhadores
+        resp = requests.get('https://api.guidi.dev.br/loteria/lotofacil/ultimo', timeout=10)
+        if resp.status_code != 200 or resp.json().get('status') == 'error':
+            raise ValueError("API indisponível")
 
-            for acertos in range(11, 16):
-                new_row[f'ValorPremio{acertos}'] = new_row.get(f'ValorPremio{acertos}', 0)
-                new_row[f'Ganhadores{acertos}'] = new_row.get(f'Ganhadores{acertos}', 0)
+        data = resp.json()
+        concurso = str(data['numero'])
+        numeros = data['listaDezenas'][:15]
+        new_row = {
+            'Concurso': concurso,
+            'Data': data['dataApuracao'],
+            **{f'bola_{i+1}': int(n) for i, n in enumerate(numeros)},
+            'Local': data.get('nomeMunicipioUFSorteio', 'Não informado'),
+            'dataProximoConcurso': data.get('dataProximoConcurso'),
+            'valorEstimadoProximoConcurso': data.get('valorEstimadoProximoConcurso', '2.000.000,00')
+        }
 
-            new_row['dataProximoConcurso'] = proximo_data or (datetime.strptime(data_sorteio, '%Y-%m-%d') + pd.Timedelta(days=7)).strftime('%Y-%m-%d')
-            new_row['valorEstimadoProximoConcurso'] = proximo_valor or '2.000.000,00'  # Fallback se não houver
+        # Cache 1h
+        REDIS.setex('lotofacil_ultimo', 3600, json.dumps(new_row))
+        return jsonify({'sorteios': [new_row]})
 
-            if not df['Concurso'].eq(concurso).any():
-                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-                df.to_csv(csv_path, sep=';', index=False)
-            
-            return jsonify({'sorteios': [new_row]})
-        else:
-            raise ValueError("Falha na requisição à API")
     except Exception as e:
-        print(f"Erro ao processar API: {e}")
+        print(f"Erro API: {e}")
         if not df.empty:
-            return jsonify({'sorteios': df.to_dict('records')})
+            last = df.tail(1).to_dict('records')[0]
+            return jsonify({'sorteios': [last]})
         return jsonify({'sorteios': [{
-            'Concurso': '3436', 'Data': '2025-07-07', 'bola_1': '01', 'bola_2': '02', 'bola_3': '03', 'bola_4': '04',
-            'bola_5': '05', 'bola_6': '06', 'bola_7': '07', 'bola_8': '08', 'bola_9': '09', 'bola_10': '10',
-            'bola_11': '11', 'bola_12': '12', 'bola_13': '13', 'bola_14': '14', 'bola_15': '15',
-            'OrdemSorteio': '01,02,03,04,05,06,07,08,09,10,11,12,13,14,15', 'Local': 'SÃO PAULO, SP',
-            'ValorPremio15': 1806333.97, 'Ganhadores15': 1, 'ValorPremio14': 2181.72, 'Ganhadores14': 248,
-            'ValorPremio13': 30.0, 'Ganhadores13': 9800, 'ValorPremio12': 12.0, 'Ganhadores12': 111936,
-            'ValorPremio11': 6.0, 'Ganhadores11': 627357, 'dataProximoConcurso': '2025-07-14', 'valorEstimadoProximoConcurso': '2.000.000,00'
-        }]}), 500
+            'Concurso': '3436', 'Data': '2025-07-07',
+            'bola_1': 1, 'bola_2': 2, 'bola_3': 3, 'bola_4': 4, 'bola_5': 5,
+            'bola_6': 6, 'bola_7': 7, 'bola_8': 8, 'bola_9': 9, 'bola_10': 10,
+            'bola_11': 11, 'bola_12': 12, 'bola_13': 13, 'bola_14': 14, 'bola_15': 15,
+            'Local': 'SÃO PAULO, SP',
+            'dataProximoConcurso': '2025-07-14',
+            'valorEstimadoProximoConcurso': '2.000.000,00'
+        }]})
+
+@app.route('/minhas_apostas', methods=['GET'])
+@verificar_token
+def minhas_apostas():
+    uid = request.uid
+    apostas = fs.obter_apostas(uid)
+    return jsonify({'apostas': apostas})
+
+# ---------- ESTATÍSTICAS ----------
+@app.route('/estatisticas', methods=['GET'])
+def estatisticas():
+    global df
+    try:
+        if df.empty:
+            return jsonify({'mais_frequentes': [], 'menos_frequentes': [], 'media_soma': 0})
+
+        numeros = []
+        for i in range(1, 16):
+            col = f'bola_{i}'
+            if col in df.columns:
+                numeros.extend(df[col].dropna().astype(int).tolist())
+
+        from collections import Counter
+        contagem = Counter(numeros)
+        mais_frequentes = sorted(contagem.items(), key=lambda x: -x[1])[:5]
+        menos_frequentes = sorted(contagem.items(), key=lambda x: x[1])[:5]
+        soma_media = round(df[[f'bola_{i}' for i in range(1, 16) if f'bola_{i}' in df.columns]].sum(axis=1).mean(), 2)
+
+        return jsonify({
+            'mais_frequentes': mais_frequentes,
+            'menos_frequentes': menos_frequentes,
+            'media_soma': soma_media
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
