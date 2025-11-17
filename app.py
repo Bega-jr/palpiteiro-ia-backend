@@ -44,6 +44,7 @@ try:
 except Exception as e:
     logger.exception("Firebase initialization failed: %s", e)
 
+
 # --- DataFrame load ---
 try:
     if os.path.exists(CSV_PATH):
