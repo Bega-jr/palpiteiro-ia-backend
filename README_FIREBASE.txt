@@ -1,0 +1,1 @@
+Place your firebase-adminsdk.json at /mnt/data/firebase-adminsdk.json or set GOOGLE_APPLICATION_CREDENTIALS env var.
