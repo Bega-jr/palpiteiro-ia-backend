@@ -1,7 +1,0 @@
-*.env
-firebase-adminsdk.json
-__pycache__
-*.csv
-*.json
-node_modules
-.git
