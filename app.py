@@ -78,5 +78,39 @@ def minhas_apostas():
 def home():
     return jsonify({"status": "ok", "message": "Palpiteiro IA v2 – VERDE E FUNCIONANDO!"})
 
+import stripe
+stripe.api_key = "sk_test_51...SUA_CHAVE_SECRETA_STRIPE"  # depois coloca em env var
+
+@app.route("/create-checkout-session", methods=["POST"])
+@verify_token_required
+def create_checkout():
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card", "pix"],
+        line_items=[{
+            "price": "price_1...SEU_PRICE_ID_R$9,90",  # cria no dashboard Stripe
+            "quantity": 1,
+        }],
+        mode="subscription",
+        success_url="https://palpiteiro-ia.netlify.app/sucesso",
+        cancel_url="https://palpiteiro-ia.netlify.app",
+        client_reference_id=request.uid,
+    )
+    return jsonify({"id": session.id})
+
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    payload = request.data
+    sig_header = request.headers.get("Stripe-Signature")
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, "whsec_...SEU_WEBHOOK_SECRET")
+        if event["type"] == "checkout.session.completed":
+            session = event["data"]["object"]
+            if session.payment_status == "paid":
+                uid = session.client_reference_id
+                db.collection("usuarios").document(uid).set({"premium": True}, merge=True)
+    except:
+        return "", 400
+    return "", 200
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 10000)))
