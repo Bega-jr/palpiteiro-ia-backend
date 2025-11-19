@@ -3,14 +3,14 @@ from flask_cors import CORS
 
 # Rotas
 from routes.estatisticas_routes import estatisticas_bp
-from routes.apostas_routes import apostas_bp
+from routes.apostas_routes import apostas_bp  # Não importa mais o app dentro do arquivo de rotas
 
 app = Flask(__name__)
 CORS(app)
 
 # Registrar blueprints
-app.register_blueprint(estatisticas_bp)
-app.register_blueprint(apostas_bp)
+app.register_blueprint(estatisticas_bp, url_prefix='/estatisticas')
+app.register_blueprint(apostas_bp, url_prefix='/apostas')
 
 # Health Check (necessário para o Render)
 @app.route("/health")
