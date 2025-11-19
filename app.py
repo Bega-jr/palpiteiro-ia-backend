@@ -2,16 +2,17 @@ from flask import Flask, jsonify
 import pandas as pd
 from collections import Counter
 
+# Inicializa o Flask
 app = Flask(__name__)
 
-# Carrega o arquivo CSV ao iniciar o servidor
+# Carrega o CSV ao iniciar o servidor
 df = pd.read_csv("historico_lotofacil.csv")
 
 @app.route('/estatisticas', methods=['GET'])
 def obter_estatisticas():
     try:
         numeros = []
-        
+
         # Carrega todas as bolas do histórico
         for i in range(1, 16):
             coluna = f'bola_{i}'
@@ -40,5 +41,6 @@ def obter_estatisticas():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
