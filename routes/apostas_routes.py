@@ -1,9 +1,15 @@
-from flask import request, jsonify
-from app import app
+from flask import Blueprint, request, jsonify
 from services.apostas_service import gerar_apostas
 
-@app.route('/gerar_palpites', methods=['GET'])
-def gerar_palpites():
+apostas_bp = Blueprint('apostas', __name__)
+
+@apostas_bp.route("/", methods=["GET"])
+def listar_apostas():
+    return jsonify({"message": "Rotas de apostas funcionando!"})
+
+# Nova rota de geração de palpites
+@apostas_bp.route("/gerar_palpites", methods=["GET"])
+def gerar_palpites_route():
     try:
         tipo = request.args.get("tipo", "aleatorio")
         jogos = gerar_apostas(tipo)
