@@ -1,29 +1,27 @@
-from flask import Flask, jsonify
+from flask import Flask
 from flask_cors import CORS
 
-# Inicializa o Flask
+# Rotas
+from routes.estatisticas_routes import estatisticas_bp
+from routes.apostas_routes import apostas_bp
+
 app = Flask(__name__)
 CORS(app)
 
-# =========================
-# Importa as rotas
-# =========================
-# IMPORTANTE:
-# Essas importações PRECISAM vir após a criação do "app"
-# pois cada arquivo de rota vai usar o "app" declarado acima.
+# Registrar blueprints
+app.register_blueprint(estatisticas_bp)
+app.register_blueprint(apostas_bp)
 
-from routes.estatisticas_routes import *
-from routes.apostas_routes import *
+# Health Check (necessário para o Render)
+@app.route("/health")
+def health():
+    return {"status": "ok"}, 200
 
-# =========================
-# Rota raiz / status
-# =========================
-@app.route('/', methods=['GET'])
+# Rota simples para teste local
+@app.route("/")
 def home():
-    return jsonify({"status": "Backend Palpiteiro IA rodando!"})
+    return {"message": "Palpiteiro IA Backend - OK!"}
 
-# =========================
-# Executar localmente
-# =========================
-if __name__ == '__main__':
+if __name__ == "__main__":
+    # Em produção (Render) o Gunicorn assume, mas isso permite execução local
     app.run(host="0.0.0.0", port=5000, debug=True)
