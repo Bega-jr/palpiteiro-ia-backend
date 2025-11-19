@@ -1,27 +1,29 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 
-# Rotas
-from routes.estatisticas_route import estatisticas_bp
-from routes.apostas_route import apostas_bp
-
+# Inicializa o Flask
 app = Flask(__name__)
 CORS(app)
 
+# =========================
+# Importa as rotas
+# =========================
+# IMPORTANTE:
+# Essas importações PRECISAM vir após a criação do "app"
+# pois cada arquivo de rota vai usar o "app" declarado acima.
 
-@app.route("/", methods=["GET"])
+from routes.estatisticas_routes import *
+from routes.apostas_routes import *
+
+# =========================
+# Rota raiz / status
+# =========================
+@app.route('/', methods=['GET'])
 def home():
     return jsonify({"status": "Backend Palpiteiro IA rodando!"})
 
-
-# Registrar rotas
-app.register_blueprint(estatisticas_bp)
-app.register_blueprint(apostas_bp)
-
-
-if __name__ == "__main__":
-    app.run(
-        host="0.0.0.0",
-        port=5000,
-        debug=True
-    )
+# =========================
+# Executar localmente
+# =========================
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=5000, debug=True)
