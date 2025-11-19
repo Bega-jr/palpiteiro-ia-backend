@@ -1,12 +1,10 @@
 from flask import Blueprint, jsonify
-from services.estatisticas_service import gerar_estatisticas
+from services.estatisticas_service import EstatisticasService
 
-estatisticas_bp = Blueprint('estatisticas', __name__)
+estatisticas_bp = Blueprint("estatisticas_bp", __name__)
+service = EstatisticasService()
 
-@estatisticas_bp.route('/estatisticas', methods=['GET'])
+@estatisticas_bp.route("/estatisticas", methods=["GET"])
 def estatisticas():
-    try:
-        resultado = gerar_estatisticas()
-        return jsonify(resultado)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    resultado = service.gerar_estatisticas()
+    return jsonify(resultado)
