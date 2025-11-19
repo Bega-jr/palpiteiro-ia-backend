@@ -1,39 +1,39 @@
-from flask import Flask, jsonify
-from flask_cors import CORS
-from estatisticas import estatisticas   # importa a função corretamente
+import pandas as pd
+from collections import Counter
+from flask import jsonify
 
-app = Flask(__name__)
-CORS(app)
+# Carrega o arquivo CSV ao iniciar o servidor
+df = pd.read_csv("historico_lotofacil.csv")
 
-# registra o endpoint /estatisticas
-app.add_url_rule('/estatisticas', 'estatisticas', estatisticas)
+@app.route('/estatisticas', methods=['GET'])
+def obter_estatisticas():
+    try:
+        numeros = []
+        
+        # Carrega todas as bolas do histórico
+        for i in range(1, 16):
+            coluna = f'bola_{i}'
+            numeros.extend(df[coluna].dropna().astype(int).tolist())
 
+        # Frequência dos números
+        contagem = Counter(numeros)
 
-@app.route('/')
-def home():
-    return jsonify({
-        "status": "VERDE TOTAL",
-        "message": "Palpiteiro IA backend 100% FUNCIONANDO – sem Firebase, sem erro, sem nada!"
-    })
+        mais_frequentes = sorted(contagem.items(), key=lambda x: -x[1])[:5]
+        menos_frequentes = sorted(contagem.items(), key=lambda x: x[1])[:5]
 
+        media_soma = round(
+            df[[f'bola_{i}' for i in range(1, 16)]]
+            .astype(float)
+            .sum(axis=1)
+            .mean(),
+            2
+        )
 
-@app.route('/historico')
-def historico():
-    return jsonify({
-        "sorteios": [{
-            "concurso": "3538",
-            "data": "18/11/2025",
-            "numeros": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
-        }]
-    })
+        return jsonify({
+            'mais_frequentes': mais_frequentes,
+            'menos_frequentes': menos_frequentes,
+            'media_soma': media_soma
+        })
 
-
-@app.route('/gerar_palpites')
-def gerar_palpites():
-    import random
-    numeros = sorted(random.sample(range(1, 26), 15))
-    return jsonify({"palpites": [numeros]})
-
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
