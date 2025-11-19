@@ -5,6 +5,9 @@ import requests
 from datetime import datetime
 from firebase_admin import credentials, firestore, initialize_app, auth as fb_auth
 
+# IMPORTA O MÓDULO DE ESTATÍSTICAS
+import estatisticas
+
 app = Flask(__name__)
 CORS(app)
 
@@ -25,6 +28,15 @@ def historico():
         return jsonify({"sorteios": [data]})
     except:
         return jsonify({"sorteios": [{"concurso": "3538", "data": "19/11/2025", "numeros": list(range(1,16))}] })
+
+@app.route('/estatisticas')
+def rota_estatisticas():
+    """Rota REAL de estatísticas"""
+    try:
+        resultado = estatisticas.gerar_estatisticas()  # função do seu arquivo
+        return jsonify(resultado)
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
 @app.route('/gerar_palpites')
 def gerar_palpites():
