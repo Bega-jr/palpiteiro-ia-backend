@@ -3,12 +3,12 @@ from flask_cors import CORS
 
 # Rotas
 from routes.estatisticas_routes import estatisticas_bp
-from routes.apostas_routes import apostas_bp  # Não importa mais o app dentro do arquivo de rotas
+from routes.apostas_routes import apostas_bp
 
 app = Flask(__name__)
 CORS(app)
 
-# Registrar blueprints
+# Registrar blueprints com prefixo de URL
 app.register_blueprint(estatisticas_bp, url_prefix='/estatisticas')
 app.register_blueprint(apostas_bp, url_prefix='/apostas')
 
@@ -23,5 +23,4 @@ def home():
     return {"message": "Palpiteiro IA Backend - OK!"}
 
 if __name__ == "__main__":
-    # Em produção (Render) o Gunicorn assume, mas isso permite execução local
     app.run(host="0.0.0.0", port=5000, debug=True)
