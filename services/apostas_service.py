@@ -1,5 +1,5 @@
 import random
-from services.estatisticas_service import carregar_estatisticas
+from services.estatisticas_service import EstatisticasService
 
 
 # --------------------------------------------------------
@@ -14,7 +14,8 @@ def gerar_jogo(numeros_possiveis):
 # tipo = aleatorio | premium
 # --------------------------------------------------------
 def gerar_apostas(tipo="aleatorio"):
-    stats = carregar_estatisticas()
+    # Usa corretamente o service
+    stats = EstatisticasService().gerar_estatisticas()
 
     mais_freq = [n for n, _ in stats["mais_frequentes"]]
     menos_freq = [n for n, _ in stats["menos_frequentes"]]
