@@ -1,23 +1,52 @@
-from flask import Flask
-from flask_cors import CORS
+from flask import Flask, jsonify, request
+from flask_cors import CORS # 1. Importa a extensão CORS
+import os
+import random
+# Adicione outras importações do seu projeto (e.g., Firebase Admin SDK, etc.)
 
-from routes.estatisticas_routes import estatisticas_bp
-from routes.apostas_routes import apostas_bp
-
+# 2. Inicialização do Flask
 app = Flask(__name__)
-CORS(app)
 
-# Registrar blueprints
-app.register_blueprint(estatisticas_bp, url_prefix='/estatisticas')
-app.register_blueprint(apostas_bp, url_prefix='/apostas')
+# 3. Configuração CRÍTICA do CORS
+# Permitimos todas as origens ('*') por enquanto para o desenvolvimento
+# Se você tiver a URL exata do Codespace, pode usá-la.
+CORS(app) 
 
-@app.route("/health")
-def health():
-    return {"status": "ok"}, 200
+# 4. Exemplo de Rota (Sua Rota de Teste)
+# Se você estiver usando o endpoint '/apostas/gerar' no seu frontend:
+@app.route('/apostas/gerar', methods=['GET'])
+def gerar_apostas():
+    """
+    Simula a geração de apostas Lotofácil.
+    Endpoint: /apostas/gerar?tipo=aleatorio
+    """
+    tipo = request.args.get('tipo', 'aleatorio')
+    
+    # 🚨 NOTA: Você deve implementar sua lógica de autenticação Firebase aqui
+    # e sua lógica de geração de números.
+    
+    # Simulação de dados: Retorna 3 jogos de 15 números
+    apostas_simuladas = []
+    for _ in range(3):
+        aposta = sorted(random.sample(range(1, 26), 15))
+        apostas_simuladas.append(aposta)
+        
+    print(f"Gerando apostas tipo: {tipo}")
+    
+    return jsonify({
+        "status": "sucesso",
+        "tipo": tipo,
+        "apostas": apostas_simuladas
+    })
 
-@app.route("/")
-def home():
-    return {"message": "Palpiteiro IA Backend - OK!"}
+# 5. Rota Raiz (Health Check)
+@app.route('/', methods=['GET', 'HEAD'])
+def health_check():
+    """ Rota de verificação de saúde usada pelo Render. """
+    return jsonify({"status": "ok"}), 200
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+# 6. Inicialização (se estiver usando o servidor de desenvolvimento local)
+if __name__ == '__main__':
+    # A porta 5000 é a porta padrão para o Render, mas certifique-se de que
+    # o Gunicorn/Render está configurado para usá-la em produção.
+    app.run(debug=True, host='0.0.0.0', port=os.environ.get('PORT', 5000))
